@@ -3,3 +3,8 @@ spring:
     active: dev
   application:
     name: cuscatlan
+
+app:
+    jwt:
+      secret: dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0c2lnbmluZ3B1cnBvc2Vz
+      expiration-minutes: 60
