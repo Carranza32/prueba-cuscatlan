@@ -30,6 +30,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Error de validacion", request, details);
     }
 
+    @ExceptionHandler(OverlappingReservationException.class)
+    public ResponseEntity<ErrorResponse> handleOverlap(OverlappingReservationException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(InvalidReservationTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTransition(InvalidReservationTransitionException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+    }
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, HttpServletRequest request, List<String> details) {
         ErrorResponse body = new ErrorResponse(
                 Instant.now(), status.value(), status.getReasonPhrase(), message, request.getRequestURI(), details

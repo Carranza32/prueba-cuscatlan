@@ -36,6 +36,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reservations").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/spaces/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/spaces/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/spaces/**").hasRole("ADMIN")
