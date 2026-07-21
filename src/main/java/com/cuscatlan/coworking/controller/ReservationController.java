@@ -24,6 +24,14 @@ public class ReservationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(reservationService.create(request, currentUser));
     }
 
+    @PatchMapping("/{id}/confirm")
+    public ResponseEntity<ReservationResponse> confirm(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(reservationService.confirm(id, currentUser));
+    }
+
     @GetMapping("/mine")
     public ResponseEntity<List<ReservationResponse>> findMine(@AuthenticationPrincipal User currentUser) {
         return ResponseEntity.ok(reservationService.findMine(currentUser));

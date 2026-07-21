@@ -24,4 +24,18 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("cancelledStatus") ReservationStatus cancelledStatus
     );
     List<Reservation> findByUserId(Long userId);
+
+    @Query("""
+        SELECT r FROM Reservation r
+        WHERE r.space.id = :spaceId
+          AND r.status <> :cancelledStatus
+          AND r.startTime < :rangeEnd
+          AND r.endTime > :rangeStart
+        """)
+    List<Reservation> findActiveInRange(
+            @Param("spaceId") Long spaceId,
+            @Param("rangeStart") LocalDateTime rangeStart,
+            @Param("rangeEnd") LocalDateTime rangeEnd,
+            @Param("cancelledStatus") ReservationStatus cancelledStatus
+    );
 }

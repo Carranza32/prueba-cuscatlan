@@ -1,5 +1,6 @@
 package com.cuscatlan.coworking.service;
 
+import com.cuscatlan.coworking.client.PaymentGatewayClient;
 import com.cuscatlan.coworking.domain.Reservation;
 import com.cuscatlan.coworking.domain.ReservationStatus;
 import com.cuscatlan.coworking.domain.Space;
@@ -8,12 +9,14 @@ import com.cuscatlan.coworking.domain.state.ReservationState;
 import com.cuscatlan.coworking.domain.state.ReservationStateResolver;
 import com.cuscatlan.coworking.dto.request.ReservationRequest;
 import com.cuscatlan.coworking.dto.response.ReservationResponse;
+import com.cuscatlan.coworking.event.ReservationConfirmedEvent;
 import com.cuscatlan.coworking.exception.OverlappingReservationException;
 import com.cuscatlan.coworking.exception.ResourceNotFoundException;
 import com.cuscatlan.coworking.mapper.ReservationMapper;
 import com.cuscatlan.coworking.repository.ReservationRepository;
 import com.cuscatlan.coworking.repository.SpaceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
@@ -27,6 +30,8 @@ public class ReservationService {
     private final SpaceRepository spaceRepository;
     private final ReservationMapper reservationMapper;
     private final ReservationStateResolver stateResolver;
+    private final ApplicationEventPublisher eventPublisher;
+    private final PaymentGatewayClient paymentGatewayClient;
 
     @Transactional
     public ReservationResponse create(ReservationRequest request, User currentUser){
@@ -56,6 +61,30 @@ public class ReservationService {
                 .build();
 
         return reservationMapper.toResponse(reservationRepository.save(reservation));
+    }
+
+    @Transactional
+    public ReservationResponse confirm(Long reservationId, User currentUser) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada: " + reservationId));
+
+        boolean isOwner = reservation.getUser().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole().name().equals("ADMIN");
+
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("No puedes confirmar una reserva que no es tuya");
+        }
+
+        ReservationState currentState = stateResolver.resolve(reservation.getStatus());
+        reservation.setStatus(currentState.confirm());
+
+        eventPublisher.publishEvent(new ReservationConfirmedEvent(
+                reservation.getId(),
+                reservation.getUser().getEmail(),
+                reservation.getSpace().getName()
+        ));
+
+        return reservationMapper.toResponse(reservation);
     }
 
     @Transactional(readOnly = true)

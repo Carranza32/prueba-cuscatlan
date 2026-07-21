@@ -26,7 +26,11 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/auth/**"
+            "/api/auth/**",
+            "/mock/payment/**",
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     };
 
     @Bean
@@ -41,6 +45,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/spaces/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/spaces/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/spaces/**").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers(HttpMethod.GET, "/api/reports/**").hasRole("ADMIN")
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
