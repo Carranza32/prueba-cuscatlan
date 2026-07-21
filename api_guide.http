@@ -1,0 +1,165 @@
+### Guía de Pruebas Interactivas para la API de Coworking
+#
+# Este archivo puede ser ejecutado en IDEs como IntelliJ IDEA o VS Code (con la extensión REST Client).
+# Permite probar el flujo completo de la aplicación de forma guiada.
+#
+# Variables
+@host = http://localhost:8080
+@jwt_token_admin ="eyJhbGciOiJIUzM4NCJ9.eyJyb2xlcyI6WyJST0xFX0FETUlOIl0sInN1YiI6ImFkbWluQHRlc3QuY29tIiwiaWF0IjoxNzg0NjQ4MjQ5LCJleHAiOjE3ODQ2NTE4NDl9.xXn9uRZ42sIJDwCP_BrTljw1PlZnBanGQi2V_u3NS2887cZtQKMH-yT0fdBlbYxQ"
+@jwt_token_user =
+
+###
+# ======================================================
+# PASO 1: Autenticación y Gestión de Usuarios
+# ======================================================
+
+### 1.1 Iniciar sesión como ADMIN para obtener su token
+# El usuario ADMIN ya está creado por defecto al iniciar la aplicación.
+# Copia el valor del campo "token" de la respuesta y pégalo en la variable @jwt_token_admin arriba.
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@test.com",
+  "password": "password123"
+}
+
+### 1.2 Registrar un nuevo usuario con rol USER
+# El registro público solo permite crear usuarios con rol USER.
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Regular User",
+  "email": "user@test.com",
+  "password": "password123"
+}
+
+### 1.3 Iniciar sesión como USER para obtener su token
+# Copia el valor del campo "token" de la respuesta y pégalo en la variable @jwt_token_user arriba.
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@test.com",
+  "password": "password123"
+}
+
+### 1.4 (DEBUG) Verificar el usuario ADMIN autenticado
+# Este endpoint devuelve la información del usuario autenticado con el token ADMIN.
+# Revisa si el campo "role" es "ADMIN".
+GET {{host}}/api/auth/me
+Authorization: Bearer {{jwt_token_admin}}
+
+### 1.5 (DEBUG) Verificar el usuario USER autenticado
+# Este endpoint devuelve la información del usuario autenticado con el token USER.
+# Revisa si el campo "role" es "USER".
+GET {{host}}/api/auth/me
+Authorization: Bearer {{jwt_token_user}}
+
+
+###
+# ======================================================
+# PASO 2: Gestión de Espacios (como ADMIN)
+# ======================================================
+
+### 2.1 Crear un nuevo espacio de coworking
+# Esta operación requiere permisos de ADMIN.
+POST {{host}}/api/spaces
+Content-Type: application/json
+Authorization: Bearer {{jwt_token_admin}}
+
+{
+  "name": "Sala de Reuniones 'El Volcán'",
+  "description": "Sala premium con capacidad para 12 personas, proyector 4K y pizarra.",
+  "capacity": 12,
+  "hourlyRate": 35.50,
+  "type": "MEETING_ROOM"
+}
+
+### 2.2 Crear un segundo espacio
+POST {{host}}/api/spaces
+Content-Type: application/json
+Authorization: Bearer {{jwt_token_admin}}
+
+{
+  "name": "Puesto Individual 'El Mirador'",
+  "description": "Puesto de trabajo individual en zona silenciosa.",
+  "capacity": 1,
+  "hourlyRate": 8.00,
+  "type": "INDIVIDUAL_DESK"
+}
+
+### 2.3 Obtener todos los espacios
+# Operación pública, no requiere token.
+GET {{host}}/api/spaces
+
+
+###
+# ======================================================
+# PASO 3: Gestión de Reservas (como USER)
+# ======================================================
+
+### 3.1 Crear una reserva válida
+# El usuario 'user@test.com' reserva la sala 'El Volcán' (id: 1) para mañana.
+# ESPERADO: Respuesta 201 Created con la reserva en estado PENDING.
+POST {{host}}/api/reservations
+Content-Type: application/json
+Authorization: Bearer {{jwt_token_user}}
+
+{
+  "spaceId": 1,
+  "startTime": "{{$localDatetime 'yyyy-MM-dd' 1 'd'}}T10:00:00",
+  "endTime": "{{$localDatetime 'yyyy-MM-dd' 1 'd'}}T12:00:00"
+}
+
+### 3.2 Intentar crear una reserva solapada
+# Se intenta reservar el mismo espacio en el mismo horario.
+# ESPERADO: Respuesta 409 Conflict.
+POST {{host}}/api/reservations
+Content-Type: application/json
+Authorization: Bearer {{jwt_token_user}}
+
+{
+  "spaceId": 1,
+  "startTime": "{{$localDatetime 'yyyy-MM-dd' 1 'd'}}T11:00:00",
+  "endTime": "{{$localDatetime 'yyyy-MM-dd' 1 'd'}}T13:00:00"
+}
+
+### 3.3 Consultar "Mis Reservas"
+# El usuario solo debería ver la reserva que creó en el paso 3.1.
+GET {{host}}/api/reservations/my-reservations
+Authorization: Bearer {{jwt_token_user}}
+
+### 3.4 Confirmar el pago de la reserva (Simulación)
+# Esta acción la realizaría el sistema al recibir una confirmación del webhook de pago.
+# La reserva (asumimos id: 1) pasará de PENDING a CONFIRMED.
+# ESPERADO: La reserva actualizada al estado CONFIRMED.
+POST {{host}}/api/reservations/1/confirm
+Authorization: Bearer {{jwt_token_admin}}
+
+
+### 3.5 Cancelar una reserva
+# El usuario cancela su propia reserva.
+# ESPERADO: La reserva actualizada al estado CANCELLED.
+POST {{host}}/api/reservations/1/cancel
+Authorization: Bearer {{jwt_token_user}}
+
+
+###
+# ======================================================
+# PASO 4: Reportes y Actuator (como ADMIN)
+# ======================================================
+
+### 4.1 Obtener reporte de ocupación
+# ESPERADO: Un reporte con el porcentaje de ocupación de los espacios.
+GET {{host}}/api/reports/occupation?start=2024-01-01&end=2024-12-31
+Authorization: Bearer {{jwt_token_admin}}
+
+### 4.2 Verificar el estado de salud de la aplicación
+# Endpoint de Spring Boot Actuator.
+GET {{host}}/actuator/health
+
+### 4.3 Verificar el estado de los Circuit Breakers
+# Endpoint de Spring Boot Actuator para Resilience4j.
+GET {{host}}/actuator/circuitbreakers

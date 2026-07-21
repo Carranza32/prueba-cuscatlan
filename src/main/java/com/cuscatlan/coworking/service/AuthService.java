@@ -5,9 +5,11 @@ import com.cuscatlan.coworking.domain.User;
 import com.cuscatlan.coworking.dto.request.LoginRequest;
 import com.cuscatlan.coworking.dto.request.RegisterRequest;
 import com.cuscatlan.coworking.dto.response.AuthResponse;
+import com.cuscatlan.coworking.dto.response.UserResponse;
 import com.cuscatlan.coworking.repository.UserRepository;
 import com.cuscatlan.coworking.security.JwtService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -51,5 +53,10 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         return AuthResponse.of(token, user.getEmail(), user.getRole().name());
+    }
+
+    public UserResponse getMe() {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return UserResponse.fromUser(user);
     }
 }
